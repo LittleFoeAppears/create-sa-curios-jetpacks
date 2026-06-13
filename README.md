@@ -1,15 +1,3 @@
-Yes — your current README was outdated. It still described the mod like it only handled Curios jetpacks, and it had the old “if it builds but does not work” section you wanted removed.
-
-I made an updated README for version **1.1.1**:
-
-[Download updated README.md](sandbox:/mnt/data/README_updated.md)
-
-I also made a full updated source ZIP with the new README already inside:
-
-[Download updated source ZIP](sandbox:/mnt/data/create-sa-curios-jetpacks-source-1.1.1-readme-updated.zip)
-
-Here is the updated README text:
-
 # Create SA Curios Jetpacks
 
 A NeoForge compatibility addon for **Create Stuff 'N Additions** and **Curios**.
