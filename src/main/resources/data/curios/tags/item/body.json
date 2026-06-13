@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "create_sa:brass_jetpack_chestplate",
+    "create_sa:andesite_jetpack_chestplate",
+    "create_sa:copper_jetpack_chestplate",
+    "create_sa:netherite_jetpack_chestplate"
+  ]
+}
