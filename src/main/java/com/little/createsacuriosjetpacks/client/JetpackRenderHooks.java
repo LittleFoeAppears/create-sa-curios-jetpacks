@@ -123,11 +123,11 @@ public final class JetpackRenderHooks {
                 poseStack.pushPose();
                 this.getParentModel().body.translateAndRotate(poseStack);
 
-                // Approximate belt placement: one tank on each side of the waist.
-                double x = count == 1 ? 0.0D : (i == 0 ? -0.27D : 0.27D);
-                poseStack.translate(x, 0.72D, -0.18D);
+                // Approximate back-belt placement: one tank on each side of the lower back.
+                double x = count == 1 ? 0.0D : (i == 0 ? -0.24D : 0.24D);
+                poseStack.translate(x, 0.72D, 0.24D);
                 poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
-                poseStack.mulPose(Axis.ZP.rotationDegrees(count == 1 ? 0.0F : (i == 0 ? -12.0F : 12.0F)));
+                poseStack.mulPose(Axis.ZP.rotationDegrees(count == 1 ? 0.0F : (i == 0 ? -10.0F : 10.0F)));
                 poseStack.scale(0.38F, 0.38F, 0.38F);
 
                 Minecraft.getInstance().getItemRenderer().renderStatic(

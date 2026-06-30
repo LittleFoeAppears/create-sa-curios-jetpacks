@@ -13,6 +13,9 @@ import net.minecraft.tags.ItemTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
@@ -22,9 +25,13 @@ import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.common.ModConfigSpec;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -41,6 +48,7 @@ import java.util.Optional;
 import java.util.List;
 import java.util.ArrayList;
 
+
 @Mod(CreateSaCuriosJetpacks.MOD_ID)
 public final class CreateSaCuriosJetpacks {
     public static final String MOD_ID = "create_sa_curios_jetpacks";
@@ -49,9 +57,20 @@ public final class CreateSaCuriosJetpacks {
     private static final ResourceLocation FUELABLE_TAG_ID = ResourceLocation.parse("create_sa:fuelable");
     private static final ResourceLocation FILLABLE_TAG_ID = ResourceLocation.parse("create_sa:fillable");
 
+    private static final ResourceLocation CURIOS_ARMOR_MODIFIER_ID = ResourceLocation.fromNamespaceAndPath(MOD_ID, "curios_jetpack_armor");
+    private static final ResourceLocation CURIOS_ARMOR_TOUGHNESS_MODIFIER_ID = ResourceLocation.fromNamespaceAndPath(MOD_ID, "curios_jetpack_armor_toughness");
+    private static final ResourceLocation CURIOS_KNOCKBACK_RESISTANCE_MODIFIER_ID = ResourceLocation.fromNamespaceAndPath(MOD_ID, "curios_jetpack_knockback_resistance");
+
+    public static final ModConfigSpec CONFIG_SPEC;
+    public static final Config CONFIG;
+
     private static final Map<ResourceLocation, JetpackProcedure> JETPACKS = new HashMap<>();
 
     static {
+        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
+        CONFIG = new Config(builder);
+        CONFIG_SPEC = builder.build();
+
         JETPACKS.put(ResourceLocation.parse("create_sa:brass_jetpack_chestplate"),
                 new JetpackProcedure("net.mcreator.createstuffadditions.procedures.BrassEncasedPropelerBodyTickEventProcedure"));
         JETPACKS.put(ResourceLocation.parse("create_sa:andesite_jetpack_chestplate"),
@@ -63,6 +82,10 @@ public final class CreateSaCuriosJetpacks {
     }
 
     public CreateSaCuriosJetpacks(IEventBus modEventBus, ModContainer modContainer) {
+        modContainer.registerConfig(ModConfig.Type.COMMON, CONFIG_SPEC);
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            com.little.createsacuriosjetpacks.client.ClientConfigHooks.registerConfigScreen(modContainer);
+        }
         modEventBus.addListener(CreateSaCuriosJetpacks::registerPayloads);
         NeoForge.EVENT_BUS.addListener(CreateSaCuriosJetpacks::onPlayerTickPost);
         NeoForge.EVENT_BUS.addListener(CreateSaCuriosJetpacks::onRightClickBlock);
@@ -192,6 +215,8 @@ public final class CreateSaCuriosJetpacks {
     private static void onPlayerTickPost(PlayerTickEvent.Post event) {
         Player player = event.getEntity();
         Level level = player.level();
+
+        updateCuriosJetpackArmorStats(player);
 
         // If the jetpack is worn normally, CSA already handles inventory tanks.
         // We only add support for tanks that are stored in the Curios belt slot.
@@ -382,6 +407,80 @@ public final class CreateSaCuriosJetpacks {
             return Optional.of("net.mcreator.createstuffadditions.client.renderer.jetpack.NetheriteJetpackArmorRenderer");
         }
         return Optional.empty();
+    }
+
+    private static void updateCuriosJetpackArmorStats(Player player) {
+        removeCuriosJetpackArmorStats(player);
+
+        if (!CONFIG.enableCuriosJetpackArmorStats.get()) {
+            return;
+        }
+
+        ArmorStatsStackingMode stackingMode = CONFIG.curiosJetpackArmorStatsStackingMode.get();
+        if (stackingMode == ArmorStatsStackingMode.CHEST_EMPTY_ONLY && !player.getItemBySlot(EquipmentSlot.CHEST).isEmpty()) {
+            return;
+        }
+
+        Optional<ItemStack> curiosJetpack = getFirstCuriosJetpack(player, "body");
+        if (curiosJetpack.isEmpty()) {
+            return;
+        }
+
+        ArmorStats stats = getJetpackArmorStats(curiosJetpack.get());
+        if (stats == null) {
+            return;
+        }
+
+        addTransientAttributeModifier(player.getAttribute(Attributes.ARMOR), CURIOS_ARMOR_MODIFIER_ID, stats.armor());
+        addTransientAttributeModifier(player.getAttribute(Attributes.ARMOR_TOUGHNESS), CURIOS_ARMOR_TOUGHNESS_MODIFIER_ID, stats.toughness());
+        addTransientAttributeModifier(player.getAttribute(Attributes.KNOCKBACK_RESISTANCE), CURIOS_KNOCKBACK_RESISTANCE_MODIFIER_ID, stats.knockbackResistance());
+    }
+
+    private static void removeCuriosJetpackArmorStats(Player player) {
+        removeAttributeModifier(player.getAttribute(Attributes.ARMOR), CURIOS_ARMOR_MODIFIER_ID);
+        removeAttributeModifier(player.getAttribute(Attributes.ARMOR_TOUGHNESS), CURIOS_ARMOR_TOUGHNESS_MODIFIER_ID);
+        removeAttributeModifier(player.getAttribute(Attributes.KNOCKBACK_RESISTANCE), CURIOS_KNOCKBACK_RESISTANCE_MODIFIER_ID);
+    }
+
+    private static void addTransientAttributeModifier(AttributeInstance attribute, ResourceLocation id, double amount) {
+        if (attribute == null || amount == 0.0D) {
+            return;
+        }
+        removeAttributeModifier(attribute, id);
+        attribute.addTransientModifier(new AttributeModifier(id, amount, AttributeModifier.Operation.ADD_VALUE));
+    }
+
+    private static void removeAttributeModifier(AttributeInstance attribute, ResourceLocation id) {
+        if (attribute != null) {
+            attribute.removeModifier(id);
+        }
+    }
+
+    private static Optional<ItemStack> getFirstCuriosJetpack(Player player, String slotId) {
+        final ItemStack[] found = {ItemStack.EMPTY};
+        forEachStackInCuriosSlot(player, slotId, stack -> {
+            if (found[0].isEmpty() && isJetpack(stack)) {
+                found[0] = stack;
+            }
+        });
+        return found[0].isEmpty() ? Optional.empty() : Optional.of(found[0]);
+    }
+
+    private static ArmorStats getJetpackArmorStats(ItemStack stack) {
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+
+        // Values copied from Create Stuff & Additions' registered armor materials for the chestplate/body slot.
+        if (id.equals(ResourceLocation.parse("create_sa:netherite_jetpack_chestplate"))) {
+            return new ArmorStats(8.0D, 3.0D, 0.1D);
+        }
+        if (id.equals(ResourceLocation.parse("create_sa:brass_jetpack_chestplate"))) {
+            return new ArmorStats(6.0D, 0.0D, 0.1D);
+        }
+        if (id.equals(ResourceLocation.parse("create_sa:andesite_jetpack_chestplate"))
+                || id.equals(ResourceLocation.parse("create_sa:copper_jetpack_chestplate"))) {
+            return new ArmorStats(6.0D, 0.0D, 0.0D);
+        }
+        return null;
     }
 
     private static void tickJetpackFromCurios(Level level, Player player, ItemStack stack) {
@@ -583,6 +682,40 @@ public final class CreateSaCuriosJetpacks {
                 // Fail closed. A missing CSA procedure should not crash the player tick.
             }
         }
+    }
+
+    public enum ArmorStatsStackingMode {
+        CHEST_EMPTY_ONLY,
+        STACK_WITH_CHEST
+    }
+
+    public static final class Config {
+        public final ModConfigSpec.BooleanValue enableCuriosJetpackArmorStats;
+        public final ModConfigSpec.EnumValue<ArmorStatsStackingMode> curiosJetpackArmorStatsStackingMode;
+
+        private Config(ModConfigSpec.Builder builder) {
+            builder.push("curios_jetpack_armor_stats");
+            enableCuriosJetpackArmorStats = builder
+                    .translation("create_sa_curios_jetpacks.configuration.enable_curios_jetpack_armor_stats")
+                    .comment(
+                            "If true, a jetpack in the Curios body slot can add its base chestplate armor attributes.",
+                            "This only applies base armor/toughness/knockback attributes; it does not promise full vanilla/modded armor enchantment compatibility."
+                    )
+                    .define("enableCuriosJetpackArmorStats", true);
+
+            curiosJetpackArmorStatsStackingMode = builder
+                    .translation("create_sa_curios_jetpacks.configuration.curios_jetpack_armor_stats_stacking_mode")
+                    .comment(
+                            "Controls how Curios jetpack armor stats interact with the normal chest armor slot.",
+                            "CHEST_EMPTY_ONLY: Curios jetpacks add armor stats only when the vanilla chest armor slot is empty.",
+                            "STACK_WITH_CHEST: Curios jetpack armor stats stack with whatever is in the vanilla chest armor slot. This is stronger and may be unbalanced."
+                    )
+                    .defineEnum("curiosJetpackArmorStatsStackingMode", ArmorStatsStackingMode.CHEST_EMPTY_ONLY);
+            builder.pop();
+        }
+    }
+
+    private record ArmorStats(double armor, double toughness, double knockbackResistance) {
     }
 
     public record FlyingStatePayload(boolean flying) implements CustomPacketPayload {

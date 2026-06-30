@@ -1,0 +1,21 @@
+{
+  "create_sa_curios_jetpacks.configuration.enable_curios_jetpack_armor_stats": "Enable Curios Jetpack Armor Stats",
+  "create_sa_curios_jetpacks.configuration.curios_jetpack_armor_stats_stacking_mode": "Curios Jetpack Armor Stacking",
+  "create_sa_curios_jetpacks.config.title": "Create SA Curios Jetpacks Config",
+  "create_sa_curios_jetpacks.config.enable_armor_stats": "Curios Jetpack Armor Stats",
+  "create_sa_curios_jetpacks.config.enable_armor_stats.description": "Adds the jetpack's base armor, armor toughness, and knockback-resistance stats while equipped in the Curios body slot.",
+  "create_sa_curios_jetpacks.config.armor_stats_stacking": "Chest Armor Interaction",
+  "create_sa_curios_jetpacks.config.armor_stats_stacking.description": "Controls whether Curios jetpack armor stats require an empty chest armor slot, or can stack with a normal chestplate.",
+  "create_sa_curios_jetpacks.config.stacking.chest_empty_only": "Only if chest slot is empty",
+  "create_sa_curios_jetpacks.config.stacking.stack_with_chest": "Stack with chest armor",
+  "create_sa_curios_jetpacks.config.enable_armor_stats.label": "Curios Jetpack Armor Stats",
+  "create_sa_curios_jetpacks.config.armor_stats_stacking.label": "Chest Armor Interaction",
+  "create_sa_curios_jetpacks.config.button.on": "Enabled",
+  "create_sa_curios_jetpacks.config.button.off": "Disabled",
+  "create_sa_curios_jetpacks.config.stacking.chest_empty_only.short": "Chest Slot Empty Only",
+  "create_sa_curios_jetpacks.config.stacking.stack_with_chest.short": "Stack With Chest Armor",
+  "create_sa_curios_jetpacks.config.button.enabled": "ON",
+  "create_sa_curios_jetpacks.config.button.disabled": "OFF",
+  "create_sa_curios_jetpacks.config.button.undo": "Undo",
+  "create_sa_curios_jetpacks.config.button.reset": "Reset"
+}
